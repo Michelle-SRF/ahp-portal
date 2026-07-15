@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AHP Project Portal — Correspondence Tracker</title>
+<style>
+  :root{
+    --brown-900:#3E2B1F;
+    --brown-800:#54382A;
+    --brown-700:#6B4A36;
+    --terra-600:#B0653F;
+    --terra-500:#C4764E;
+    --terra-100:#F3E4DA;
+    --sand-50:#FAF6F1;
+    --sand-100:#F2EAE0;
+    --sand-200:#E6D9C9;
+    --ink:#2E241D;
+    --muted:#8A7767;
+    --green:#3E7C4F;
+    --green-bg:#E4F0E7;
+    --amber:#A66A00;
+    --amber-bg:#FBEFD8;
+    --red:#B03A2E;
+    --red-bg:#F8E3E0;
+    --blue:#3E5F7C;
+    --blue-bg:#E3ECF3;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:var(--sand-50);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  /* ---------- Header ---------- */
+  header{
+    background:linear-gradient(135deg,var(--brown-900) 0%,var(--brown-700) 70%,var(--terra-600) 130%);
+    color:#fff;
+    padding:12px 32px 12px;
+  }
+  .hd-wrap{max-width:1280px;margin:0 auto;position:relative;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;min-height:62px;}
+  .brand{display:flex;flex-direction:column;align-items:center;gap:0;text-align:center;}
+  .logo{height:64px;width:auto;display:block;position:absolute;left:0;top:50%;transform:translateY(-50%);}
+  .brand h1{
+    font-size:1.7rem;font-weight:600;letter-spacing:.6px;
+    text-shadow:0 0 12px rgba(227,194,126,.75),0 0 28px rgba(212,175,55,.45),0 0 46px rgba(212,175,55,.25);
+  }
+  .brand .sub{font-size:.95rem;opacity:.88;margin-top:2px;letter-spacing:1.2px;text-transform:uppercase;color:#EED9B8;}
+  .hd-right{position:absolute;right:0;top:50%;transform:translateY(-50%);}
+  @media (max-width:760px){
+    .logo{position:static;transform:none;height:42px;margin-bottom:4px;}
+    .brand h1{font-size:1.35rem;}
+    .brand .sub{font-size:.85rem;}
+    .hd-wrap{flex-direction:column;min-height:0;padding-bottom:44px;}
+    .hd-right{top:auto;bottom:0;transform:none;}
+  }
+  .hd-right{display:flex;align-items:center;gap:14px;}
+  .refresh-btn{
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);
+    color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:.85rem;
+    transition:background .15s;
+  }
+  .refresh-btn:hover{background:rgba(255,255,255,.26);}
+  .last-updated{font-size:.75rem;opacity:.7;}
+  /* ---------- Summary cards ---------- */
+  .cards{max-width:1280px;margin:22px auto 0;padding:0 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;}
+  .card{
+    border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(62,43,31,.06);
+    border:1px solid var(--sand-200);background:#fff;
+  }
+  .card .num{font-size:1.7rem;font-weight:700;color:var(--brown-800);}
+  .card .lbl{font-size:.78rem;color:var(--muted);margin-top:2px;letter-spacing:.3px;text-transform:uppercase;}
+  .card .split{font-size:.78rem;margin-top:6px;color:var(--brown-700);display:flex;gap:12px;}
+  .card .split b{font-weight:700;}
+  .card .split .over-num{color:var(--red);}
+  .card.total{background:linear-gradient(150deg,#FDF8F2,var(--terra-100));border-color:#E5C9B5;}
+  .card.total .num{color:var(--terra-600);}
+  .card.pending{background:linear-gradient(150deg,#FEFAF0,var(--amber-bg));border-color:#EBD9AE;}
+  .card.pending .num{color:var(--amber);}
+  .card.replied{background:linear-gradient(150deg,#F4FAF5,var(--green-bg));border-color:#BFDCC7;}
+  .card.replied .num{color:var(--green);}
+  /* ---------- Filters ---------- */
+  .filters{
+    max-width:1280px;margin:20px auto 0;padding:0 32px;
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  }
+  .filters select,.filters input[type="search"]{
+    padding:9px 12px;border:1px solid var(--sand-200);border-radius:8px;
+    background:#fff;color:var(--ink);font-size:.87rem;min-width:140px;
+  }
+  .filters input[type="search"]{flex:1;min-width:220px;}
+  .filters select:focus,.filters input:focus{outline:2px solid var(--terra-500);outline-offset:1px;}
+  .clear-btn{
+    background:none;border:none;color:var(--terra-600);cursor:pointer;
+    font-size:.85rem;text-decoration:underline;padding:8px 4px;
+  }
+  /* ---------- Table ---------- */
+  .table-wrap{
+    max-width:1280px;margin:18px auto 60px;padding:0 32px;
+  }
+  .table-card{
+    background:#fff;border:1px solid var(--sand-200);border-radius:14px;
+    overflow:auto;box-shadow:0 1px 4px rgba(62,43,31,.07);
+  }
+  table{width:100%;border-collapse:collapse;font-size:.86rem;min-width:1050px;}
+  thead th{
+    background:var(--sand-100);color:var(--brown-800);
+    text-align:left;padding:12px 14px;font-weight:600;font-size:.76rem;
+    letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;
+    border-bottom:2px solid var(--sand-200);
+    position:sticky;top:0;
+  }
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--sand-100);vertical-align:top;}
+  tbody tr:hover{background:var(--sand-50);}
+  .sno{color:var(--muted);font-weight:600;}
+  .ref{font-weight:600;color:var(--brown-800);white-space:nowrap;}
+  .subj{min-width:260px;max-width:460px;}
+  .badge{
+    display:inline-block;padding:3px 10px;border-radius:20px;
+    font-size:.74rem;font-weight:600;white-space:nowrap;
+  }
+  .b-pending{background:var(--amber-bg);color:var(--amber);}
+  .b-replied{background:var(--green-bg);color:var(--green);}
+  .b-closed{background:var(--sand-100);color:var(--muted);}
+  .b-info{background:var(--blue-bg);color:var(--blue);}
+  .b-out{background:var(--terra-100);color:var(--terra-600);}
+  .b-in{background:var(--blue-bg);color:var(--blue);}
+  .days{font-weight:600;white-space:nowrap;}
+  .days.ok{color:var(--muted);}
+  .days.warn{color:var(--amber);}
+  .days.late{color:var(--red);}
+  .empty,.loading,.error-box{
+    text-align:center;padding:60px 20px;color:var(--muted);font-size:.95rem;
+  }
+  .error-box{color:var(--red);}
+  .spinner{
+    width:34px;height:34px;border:3px solid var(--sand-200);border-top-color:var(--terra-500);
+    border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion:reduce){.spinner{animation:none;}}
+  .count-line{font-size:.8rem;color:var(--muted);margin:10px 2px 0;}
+  footer{
+    text-align:center;color:var(--muted);font-size:.75rem;padding:0 20px 30px;
+  }
+  /* ---------- Login ---------- */
+  .login-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:linear-gradient(150deg,var(--brown-900) 0%,var(--brown-800) 55%,var(--terra-600) 140%);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .login-card{
+    background:var(--sand-50);border-radius:18px;padding:38px 36px 32px;
+    width:100%;max-width:400px;text-align:center;
+    box-shadow:0 18px 60px rgba(0,0,0,.35);
+  }
+  .login-card .logo-dark{height:70px;margin:0 auto 14px;display:block;
+    filter:brightness(.35) sepia(.4) saturate(2) hue-rotate(-15deg);}
+  .login-card h2{color:var(--brown-800);font-size:1.35rem;margin-bottom:2px;}
+  .login-card .lsub{color:var(--muted);font-size:.85rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:24px;}
+  .login-card input{
+    width:100%;padding:12px 14px;border:1px solid var(--sand-200);border-radius:9px;
+    font-size:.95rem;background:#fff;margin-bottom:12px;
+  }
+  .login-card input:focus{outline:2px solid var(--terra-500);outline-offset:1px;}
+  .login-btn{
+    width:100%;padding:12px;border:none;border-radius:9px;cursor:pointer;
+    background:linear-gradient(135deg,var(--brown-700),var(--terra-600));
+    color:#fff;font-size:.95rem;font-weight:600;letter-spacing:.4px;
+  }
+  .login-btn:hover{filter:brightness(1.08);}
+  .login-err{color:var(--red);font-size:.83rem;min-height:18px;margin-top:10px;}
+  .role-chip{
+    display:inline-block;background:var(--terra-100);color:var(--terra-600);
+    font-size:.72rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+    padding:3px 10px;border-radius:14px;margin-right:6px;
+  }
+  .logout-btn{background:none;border:none;color:#fff;opacity:.75;cursor:pointer;font-size:.8rem;text-decoration:underline;}
+  .logout-btn:hover{opacity:1;}
+  .new-btn{
+    background:#fff;color:var(--brown-800);border:none;border-radius:8px;
+    padding:9px 18px;font-size:.87rem;font-weight:600;cursor:pointer;
+    box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  .new-btn:hover{background:var(--terra-100);}
+  /* ---------- Modal form ---------- */
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(46,36,29,.55);z-index:90;
+    display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;
+  }
+  .modal-bg.open{display:flex;}
+  .modal{
+    background:var(--sand-50);border-radius:16px;max-width:720px;width:100%;
+    padding:28px 30px 26px;box-shadow:0 16px 50px rgba(0,0,0,.3);
+  }
+  .modal h3{color:var(--brown-800);font-size:1.2rem;margin-bottom:4px;}
+  .modal .msub{color:var(--muted);font-size:.83rem;margin-bottom:20px;}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;}
+  .fgrid .full{grid-column:1 / -1;}
+  .fld label{display:block;font-size:.76rem;font-weight:700;letter-spacing:.4px;
+    text-transform:uppercase;color:var(--brown-700);margin-bottom:5px;}
+  .fld input,.fld select,.fld textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--sand-200);border-radius:8px;
+    font-size:.9rem;background:#fff;color:var(--ink);font-family:inherit;
+  }
+  .fld textarea{resize:vertical;min-height:64px;}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid var(--terra-500);outline-offset:1px;}
+  .ref-preview{
+    background:var(--terra-100);border:1px dashed var(--terra-500);border-radius:8px;
+    padding:10px 14px;font-weight:700;color:var(--brown-800);letter-spacing:.5px;
+    font-size:.95rem;
+  }
+  .ref-preview small{display:block;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:2px;font-size:.75rem;}
+  .modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:22px;}
+  .btn-secondary{
+    background:none;border:1px solid var(--sand-200);border-radius:8px;padding:10px 18px;
+    color:var(--brown-700);cursor:pointer;font-size:.88rem;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--brown-700),var(--terra-600));border:none;border-radius:8px;
+    padding:10px 22px;color:#fff;font-weight:600;cursor:pointer;font-size:.88rem;
+  }
+  .btn-primary:disabled{opacity:.55;cursor:wait;}
+  .form-msg{font-size:.85rem;min-height:20px;margin-top:12px;}
+  .form-msg.ok{color:var(--green);}
+  .form-msg.err{color:var(--red);}
+  @media (max-width:640px){
+    header{padding:20px 18px;}
+    .fgrid{grid-template-columns:1fr;}
+    .cards,.filters,.table-wrap{padding:0 14px;}
+    .brand h1{font-size:1.15rem;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-wrap">
+    <img class="logo" src="data:image/png;base64,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" alt="Al Huzaifa Properties">
+    <div class="brand">
+      <h1>Project Portal</h1>
+      <div class="sub">Correspondence Tracker</div>
+    </div>
+    <div class="hd-right" style="display:flex;align-items:center;gap:10px;">
+      <span class="last-updated" id="lastUpdated"></span>
+      <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+      <button class="new-btn" id="newBtn" style="display:none" onclick="openModal()">+ New Record</button>
+      <button class="logout-btn" onclick="logout()">Log out</button>
+    </div>
+  </div>
+</header>
+
+<section class="cards" id="cards">
+  <div class="card total">
+    <div class="num" id="cTotal">–</div><div class="lbl">Total records</div>
+    <div class="split"><span>&#8599; Outgoing: <b id="cOut">–</b></span><span>&#8600; Incoming: <b id="cIn">–</b></span></div>
+  </div>
+  <div class="card pending">
+    <div class="num" id="cPending">–</div><div class="lbl">Pending reply</div>
+    <div class="split"><span>&#9200; Over 14 days: <b id="cOverdue" class="over-num">–</b></span></div>
+  </div>
+  <div class="card replied"><div class="num" id="cReplied">–</div><div class="lbl">Replied</div></div>
+</section>
+
+<section class="filters">
+  <select id="fProject"><option value="">All projects</option></select>
+  <select id="fParty"><option value="">All parties</option></select>
+  <select id="fType"><option value="">All types</option></select>
+  <select id="fDirection">
+    <option value="">All directions</option>
+    <option>Outgoing</option>
+    <option>Incoming</option>
+  </select>
+  <select id="fStatus">
+    <option value="">All statuses</option>
+    <option>Pending Reply</option>
+    <option>Replied</option>
+    <option>Closed</option>
+    <option>For Info</option>
+  </select>
+  <input type="search" id="fSearch" placeholder="Search reference, subject, remarks&hellip;">
+  <button class="clear-btn" onclick="clearFilters()">Clear filters</button>
+</section>
+
+<div class="table-wrap">
+  <div class="table-card">
+    <div id="stateBox" class="loading"><div class="spinner"></div>Loading correspondence&hellip;</div>
+    <table id="tbl" style="display:none">
+      <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Reference No.</th>
+          <th>Project</th>
+          <th>Type</th>
+          <th>Direction</th>
+          <th>Party</th>
+          <th>Letter Date</th>
+          <th>Received</th>
+          <th>Subject</th>
+          <th>Status</th>
+          <th>Days Pending</th>
+          <th>Reply Ref</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="count-line" id="countLine"></div>
+</div>
+
+<footer>AHP Project Portal &middot; Phase 1 &middot; Data refreshes on load</footer>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <h2>AHP Project Portal</h2>
+    <div class="lsub">Correspondence Tracker</div>
+    <input type="password" id="pwInput" placeholder="Enter your access password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>New Correspondence Record</h3>
+    <div class="msub">Fields marked * are required. Outgoing letters receive an auto-generated reference on submit.</div>
+    <div class="fgrid">
+      <div class="fld">
+        <label>Direction *</label>
+        <select id="mDirection" onchange="onDirectionChange()">
+          <option>Outgoing</option>
+          <option>Incoming</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Project *</label>
+        <select id="mProject" onchange="updateRefPreview()"></select>
+      </div>
+      <div class="fld">
+        <label>Document Type *</label>
+        <select id="mType">
+          <option>Letter</option>
+          <option>Variation</option>
+          <option>Authority Submission</option>
+          <option>NOC</option>
+          <option>Inspection Request</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Party (To / From) *</label>
+        <select id="mParty" onchange="updateRefPreview()"></select>
+      </div>
+      <div class="fld">
+        <label>Requested By *</label>
+        <select id="mRequestedBy" onchange="updateRefPreview()"></select>
+      </div>
+      <div class="fld" id="manualRefWrap" style="display:none">
+        <label>Reference No. (from letter) *</label>
+        <input type="text" id="mManualRef" placeholder="e.g. CEC/SOL/2026/145">
+      </div>
+      <div class="fld full" id="refPreviewWrap">
+        <div class="ref-preview" id="refPreview">AHP-&hellip;
+          <small>Reference number is assigned automatically when you submit.</small>
+        </div>
+      </div>
+      <div class="fld">
+        <label>Letter Date *</label>
+        <input type="date" id="mLetterDate">
+      </div>
+      <div class="fld">
+        <label>Received Date</label>
+        <input type="date" id="mReceivedDate">
+      </div>
+      <div class="fld full">
+        <label>Subject *</label>
+        <input type="text" id="mSubject" placeholder="Subject of the letter / document">
+      </div>
+      <div class="fld">
+        <label>Cross Reference No.</label>
+        <input type="text" id="mCrossRef">
+      </div>
+      <div class="fld">
+        <label>Reply Reference No.</label>
+        <input type="text" id="mReplyRef">
+      </div>
+      <div class="fld">
+        <label>Forwarded To - Reference No.</label>
+        <input type="text" id="mForwardedRef">
+      </div>
+      <div class="fld">
+        <label>Status *</label>
+        <select id="mStatus">
+          <option>Pending Reply</option>
+          <option>Replied</option>
+          <option>Closed</option>
+          <option>For Info</option>
+        </select>
+      </div>
+      <div class="fld full">
+        <label>Remarks</label>
+        <textarea id="mRemarks"></textarea>
+      </div>
+    </div>
+    <div class="form-msg" id="formMsg"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" id="submitBtn" onclick="submitRecord()">Submit record</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://defaultde468fa9dfee42d5bd38a4a7d32047.fb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/16/workflows/9296276449cb48b8bb1bff7ce428b5f8/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=FoxYCGcKb73G1ZVpHR814nkKzFKeBjHvc7Cpu9ez7bk";
+
+const SUBMIT_URL = "https://defaultde468fa9dfee42d5bd38a4a7d32047.fb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/06/workflows/00ad5431b60d496d9e45bce9b367e00b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=ebmbLqNbEwwFCJz9H6yDC7KBY7M5haddBAeW7Ozyy_Q";
+
+/* ============ ACCESS PASSWORDS — change these two lines to set new passwords ============ */
+const ADMIN_PASSWORD  = "AHP-Admin-2026";   /* full access: view + add records */
+const VIEWER_PASSWORD = "AHP-View-2026";    /* projects team: view only */
+/* ========================================================================================= */
+
+let userRole = null;
+let allRecords = [];
+let lookups = { projects: [], parties: [], requestors: [] };
+
+function doLogin(){
+  const pw = document.getElementById("pwInput").value;
+  const err = document.getElementById("loginErr");
+  if(pw === ADMIN_PASSWORD) userRole = "admin";
+  else if(pw === VIEWER_PASSWORD) userRole = "viewer";
+  else { err.textContent = "That password isn't recognised. Please try again."; return; }
+  err.textContent = "";
+  try { sessionStorage.setItem("ahpRole", userRole); } catch(e){}
+  enterPortal();
+}
+function enterPortal(){
+  document.getElementById("loginOverlay").style.display = "none";
+  document.getElementById("newBtn").style.display = userRole === "admin" ? "inline-block" : "none";
+  loadData();
+}
+function logout(){
+  try { sessionStorage.removeItem("ahpRole"); } catch(e){}
+  location.reload();
+}
+
+/* ---------- Modal ---------- */
+function openModal(){
+  fillModalSelect("mProject", lookups.projects.map(p => ({v:p.code, t:p.code + " — " + p.name})));
+  fillModalSelect("mParty",   lookups.parties.map(p => ({v:p.code, t:p.code + " — " + p.name})));
+  fillModalSelect("mRequestedBy", lookups.requestors.map(r => ({v:r.code, t:r.code + " — " + r.name})));
+  document.getElementById("mLetterDate").value = new Date().toISOString().slice(0,10);
+  document.getElementById("formMsg").textContent = "";
+  document.getElementById("formMsg").className = "form-msg";
+  onDirectionChange();
+  document.getElementById("modalBg").classList.add("open");
+}
+function closeModal(){ document.getElementById("modalBg").classList.remove("open"); }
+function fillModalSelect(id, opts){
+  const sel = document.getElementById(id);
+  sel.innerHTML = "";
+  opts.forEach(o => {
+    const el = document.createElement("option");
+    el.value = o.v; el.textContent = o.t;
+    sel.appendChild(el);
+  });
+}
+function onDirectionChange(){
+  const out = document.getElementById("mDirection").value === "Outgoing";
+  document.getElementById("manualRefWrap").style.display = out ? "none" : "block";
+  document.getElementById("refPreviewWrap").style.display = out ? "block" : "none";
+  updateRefPreview();
+}
+function updateRefPreview(){
+  const p = document.getElementById("mProject").value || "…";
+  const pa = document.getElementById("mParty").value || "…";
+  const r = document.getElementById("mRequestedBy").value || "…";
+  document.getElementById("refPreview").innerHTML =
+    "AHP-" + p + "-" + pa + "-" + r + "-####" +
+    "<small>Reference number is assigned automatically when you submit.</small>";
+}
+async function submitRecord(){
+  const msg = document.getElementById("formMsg");
+  const btn = document.getElementById("submitBtn");
+  const direction = document.getElementById("mDirection").value;
+  const payload = {
+    direction: direction,
+    projectCode: document.getElementById("mProject").value,
+    docType: document.getElementById("mType").value,
+    party: document.getElementById("mParty").value,
+    requestedBy: document.getElementById("mRequestedBy").value,
+    letterDate: document.getElementById("mLetterDate").value,
+    receivedDate: document.getElementById("mReceivedDate").value,
+    subject: document.getElementById("mSubject").value.trim(),
+    crossRefNo: document.getElementById("mCrossRef").value.trim(),
+    replyRefNo: document.getElementById("mReplyRef").value.trim(),
+    forwardedToRefNo: document.getElementById("mForwardedRef").value.trim(),
+    letterStatus: document.getElementById("mStatus").value,
+    remarks: document.getElementById("mRemarks").value.trim(),
+    manualRefNo: direction === "Incoming" ? document.getElementById("mManualRef").value.trim() : ""
+  };
+  /* validation */
+  if(!payload.subject){ msg.textContent = "Please enter a subject."; msg.className = "form-msg err"; return; }
+  if(!payload.letterDate){ msg.textContent = "Please pick the letter date."; msg.className = "form-msg err"; return; }
+  if(direction === "Incoming" && !payload.manualRefNo){
+    msg.textContent = "Please enter the reference number shown on the incoming letter."; msg.className = "form-msg err"; return;
+  }
+  btn.disabled = true;
+  msg.textContent = "Submitting…"; msg.className = "form-msg";
+  try{
+    const res = await fetch(SUBMIT_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    msg.textContent = "Saved — reference " + (data.refNo || payload.manualRefNo) + " recorded.";
+    msg.className = "form-msg ok";
+    await loadData();
+    setTimeout(closeModal, 1600);
+    /* clear the free-text fields for the next entry */
+    ["mSubject","mCrossRef","mReplyRef","mForwardedRef","mRemarks","mManualRef"].forEach(id => document.getElementById(id).value = "");
+  }catch(err){
+    msg.textContent = "Couldn't save the record (" + err.message + "). Please try again.";
+    msg.className = "form-msg err";
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* SharePoint Choice columns arrive as {Value:"SOL"}; text columns as strings. */
+function cv(field){
+  if (field === null || field === undefined) return "";
+  if (typeof field === "object") return field.Value || "";
+  return String(field);
+}
+function fmtDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  if(isNaN(d)) return "";
+  return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+}
+function daysSince(iso){
+  if(!iso) return null;
+  const d = new Date(iso);
+  if(isNaN(d)) return null;
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function loadData(){
+  const box = document.getElementById("stateBox");
+  const tbl = document.getElementById("tbl");
+  box.style.display = "block";
+  tbl.style.display = "none";
+  box.className = "loading";
+  box.innerHTML = '<div class="spinner"></div>Loading correspondence&hellip;';
+  try{
+    const res = await fetch(API_URL);
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    allRecords = (data.records || []).map(r => ({
+      ref: cv(r.Title),
+      project: cv(r.ProjectCode),
+      type: cv(r.DocType),
+      direction: cv(r.Direction),
+      party: cv(r.Party),
+      requestedBy: cv(r.RequestedBy),
+      letterDate: r.LetterDate || "",
+      receivedDate: r.ReceivedDate || "",
+      subject: cv(r.Subject),
+      crossRef: cv(r.CrossRefNo),
+      replyRef: cv(r.ReplyRefNo),
+      forwardedRef: cv(r.ForwardedToRefNo),
+      status: cv(r.LetterStatus),
+      remarks: cv(r.Remarks),
+      pdfLink: cv(r.PDFLink)
+    }));
+    lookups.projects = (data.projects || []).map(p => ({code: cv(p.Title), name: cv(p.ProjectName)}));
+    lookups.parties  = (data.parties  || []).map(p => ({code: cv(p.Title), name: cv(p.PartyName), type: cv(p.PartyType)}));
+    lookups.requestors = (data.requestors || []).map(r => ({code: cv(r.Title), name: cv(r.RequestorName)}));
+
+    buildFilterOptions();
+    render();
+    document.getElementById("lastUpdated").textContent =
+      "Updated " + new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) +
+      ", " + new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  }catch(err){
+    box.className = "error-box";
+    box.innerHTML = "Couldn't load the tracker data. Check your connection and press Refresh to try again.<br><small>(" + esc(err.message) + ")</small>";
+  }
+}
+
+function buildFilterOptions(){
+  fillSelect("fProject", lookups.projects.map(p => ({v:p.code, t:p.code + " — " + p.name})));
+  fillSelect("fParty",   lookups.parties.map(p => ({v:p.code, t:p.code + " — " + p.name})));
+  const types = [...new Set(allRecords.map(r => r.type).filter(Boolean))].sort();
+  fillSelect("fType", types.map(t => ({v:t, t:t})));
+}
+function fillSelect(id, opts){
+  const sel = document.getElementById(id);
+  const current = sel.value;
+  while(sel.options.length > 1) sel.remove(1);
+  opts.forEach(o => {
+    const el = document.createElement("option");
+    el.value = o.v; el.textContent = o.t;
+    sel.appendChild(el);
+  });
+  sel.value = current;
+}
+
+function getFiltered(){
+  const p = document.getElementById("fProject").value;
+  const pa = document.getElementById("fParty").value;
+  const t = document.getElementById("fType").value;
+  const d = document.getElementById("fDirection").value;
+  const s = document.getElementById("fStatus").value;
+  const q = document.getElementById("fSearch").value.trim().toLowerCase();
+  return allRecords.filter(r =>
+    (!p  || r.project === p) &&
+    (!pa || r.party === pa) &&
+    (!t  || r.type === t) &&
+    (!d  || r.direction === d) &&
+    (!s  || r.status === s) &&
+    (!q  || (r.ref + " " + r.subject + " " + r.remarks + " " + r.crossRef + " " + r.replyRef).toLowerCase().includes(q))
+  );
+}
+
+function statusBadge(st){
+  const map = {"Pending Reply":"b-pending","Replied":"b-replied","Closed":"b-closed","For Info":"b-info"};
+  return '<span class="badge ' + (map[st] || "b-closed") + '">' + esc(st || "—") + "</span>";
+}
+function dirBadge(d){
+  if(!d) return "";
+  return '<span class="badge ' + (d === "Outgoing" ? "b-out" : "b-in") + '">' + esc(d) + "</span>";
+}
+function daysCell(r){
+  if(r.status !== "Pending Reply") return "<span class='days ok'>—</span>";
+  const n = daysSince(r.letterDate);
+  if(n === null) return "<span class='days ok'>—</span>";
+  const cls = n > 14 ? "late" : (n > 7 ? "warn" : "ok");
+  return "<span class='days " + cls + "'>" + n + "d</span>";
+}
+
+function render(){
+  const rows = getFiltered();
+  const tbody = document.getElementById("tbody");
+  const box = document.getElementById("stateBox");
+  const tbl = document.getElementById("tbl");
+
+  /* summary cards always reflect ALL records */
+  const pending = allRecords.filter(r => r.status === "Pending Reply");
+  document.getElementById("cTotal").textContent = allRecords.length;
+  document.getElementById("cOut").textContent = allRecords.filter(r => r.direction === "Outgoing").length;
+  document.getElementById("cIn").textContent  = allRecords.filter(r => r.direction === "Incoming").length;
+  document.getElementById("cPending").textContent = pending.length;
+  document.getElementById("cOverdue").textContent = pending.filter(r => (daysSince(r.letterDate) || 0) > 14).length;
+  document.getElementById("cReplied").textContent = allRecords.filter(r => r.status === "Replied").length;
+
+  if(rows.length === 0){
+    tbl.style.display = "none";
+    box.style.display = "block";
+    box.className = "empty";
+    box.textContent = allRecords.length === 0
+      ? "No correspondence recorded yet."
+      : "No records match the current filters. Clear filters to see everything.";
+  }else{
+    box.style.display = "none";
+    tbl.style.display = "table";
+    tbody.innerHTML = rows.map((r, i) => `
+      <tr>
+        <td class="sno">${i + 1}</td>
+        <td class="ref">${esc(r.ref)}</td>
+        <td>${esc(r.project)}</td>
+        <td>${esc(r.type)}</td>
+        <td>${dirBadge(r.direction)}</td>
+        <td>${esc(r.party)}</td>
+        <td>${fmtDate(r.letterDate)}</td>
+        <td>${fmtDate(r.receivedDate)}</td>
+        <td class="subj">${esc(r.subject)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${daysCell(r)}</td>
+        <td>${esc(r.replyRef)}</td>
+        <td class="subj">${esc(r.remarks)}</td>
+      </tr>`).join("");
+  }
+  document.getElementById("countLine").textContent =
+    "Showing " + rows.length + " of " + allRecords.length + " record" + (allRecords.length === 1 ? "" : "s");
+}
+
+function clearFilters(){
+  ["fProject","fParty","fType","fDirection","fStatus"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("fSearch").value = "";
+  render();
+}
+
+["fProject","fParty","fType","fDirection","fStatus"].forEach(id =>
+  document.getElementById(id).addEventListener("change", render));
+document.getElementById("fSearch").addEventListener("input", render);
+
+(function boot(){
+  let saved = null;
+  try { saved = sessionStorage.getItem("ahpRole"); } catch(e){}
+  if(saved === "admin" || saved === "viewer"){
+    userRole = saved;
+    enterPortal();
+  }
+})();
+</script>
+</body>
+</html>
