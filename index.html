@@ -296,6 +296,12 @@
   .bar-fill.full{background:linear-gradient(90deg,#5B9C6E,var(--green));}
   .bar-row .bv{width:44px;font-weight:700;color:var(--brown-800);flex-shrink:0;}
   .act-card{grid-column:span 2;}
+  .chart-grid .chart-card:nth-child(5n+1){background:#FBF4EC;}
+  .chart-grid .chart-card:nth-child(5n+2){background:#F1F6EF;}
+  .chart-grid .chart-card:nth-child(5n+3){background:#EEF3F7;}
+  .chart-grid .chart-card:nth-child(5n+4){background:#FAF0EA;}
+  .chart-grid .chart-card:nth-child(5n+5){background:#F7F2E9;}
+  .chart-grid .chart-card .bar-track{background:rgba(255,255,255,.85);}
   @media (max-width:700px){.act-card{grid-column:1 / -1;}}
   .empty-tab{padding:50px 20px;text-align:center;color:var(--muted);font-size:.92rem;}
   /* ---------- Phase 4: Photos ---------- */
@@ -1341,10 +1347,10 @@ function renderCharts(){
     cards += '<div class="chart-card" style="text-align:center;">' +
       '<h3>' + esc(p.pkg) + ' Progress</h3>' +
       '<div class="csub">' + capt + '</div>' +
-      donutSVG(pct, color, 170) +
-      '<div style="font-size:.82rem;color:var(--brown-700);margin-top:10px;font-weight:600;">' +
+      donutSVG(pct, color, 128) +
+      '<div style="font-size:.82rem;color:var(--brown-700);margin-top:8px;font-weight:600;">' +
         p.actual.toLocaleString() + ' of ' + p.planned.toLocaleString() + ' ' + esc(p.unit || '') + '</div>' +
-      '<div style="display:flex;gap:8px;justify-content:center;margin-top:12px;font-size:.75rem;color:var(--muted);">' +
+      '<div style="display:flex;gap:8px;justify-content:center;margin-top:8px;font-size:.75rem;color:var(--muted);">' +
         '<span><span class="dot" style="background:var(--terra-600);"></span> Actual</span>' +
         '<span><span class="dot" style="background:var(--sand-200);"></span> Balance: ' + Math.max(p.planned - p.actual,0).toLocaleString() + '</span></div>' +
       '</div>';
