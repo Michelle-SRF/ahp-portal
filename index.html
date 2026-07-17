@@ -299,7 +299,7 @@
   .chart-grid .chart-card:nth-child(5n+1){background:#FBF4EC;}
   .chart-grid .chart-card:nth-child(5n+2){background:#F1F6EF;}
   .chart-grid .chart-card:nth-child(5n+3){background:#EEF3F7;}
-  .chart-grid .chart-card:nth-child(5n+4){background:#FAF0EA;}
+  .chart-grid .chart-card:nth-child(5n+4){background:var(--terra-100);}
   .chart-grid .chart-card:nth-child(5n+5){background:#F7F2E9;}
   .chart-grid .chart-card .bar-track{background:rgba(255,255,255,.85);}
   @media (max-width:700px){.act-card{grid-column:1 / -1;}}
@@ -364,6 +364,17 @@
   .dir-links a{color:var(--terra-600);text-decoration:none;white-space:nowrap;}
   .dir-links a:hover{text-decoration:underline;}
   .dir-empty-contact{font-size:.8rem;color:var(--muted);font-style:italic;padding:6px 0;}
+  .dir-layout{display:grid;grid-template-columns:290px 1fr;gap:18px;align-items:start;}
+  @media (max-width:820px){.dir-layout{grid-template-columns:1fr;}}
+  .dir-side{display:flex;flex-direction:column;gap:10px;position:sticky;top:12px;}
+  .dir-side select,.dir-side input{width:100%;padding:8px 12px;border:1px solid var(--sand-200);border-radius:8px;background:#fff;font-size:.85rem;}
+  .dir-co-list{background:#fff;border:1px solid var(--sand-200);border-radius:12px;overflow:hidden;max-height:520px;overflow-y:auto;}
+  .dir-co-item{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--sand-100);font-size:.83rem;}
+  .dir-co-item:last-child{border-bottom:none;}
+  .dir-co-item:hover{background:var(--sand-50);}
+  .dir-co-item.active{background:var(--terra-100);border-left:3px solid var(--terra-600);padding-left:9px;}
+  .dir-co-item .n{font-weight:600;color:var(--brown-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:auto;}
+  .dir-co-item .t{font-size:.66rem;font-weight:700;letter-spacing:.3px;background:var(--sand-100);color:var(--brown-700);padding:2px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
   @media (max-width:640px){
     header{padding:20px 18px;}
     .tabs{padding:0 14px;}
@@ -535,16 +546,19 @@
 
 <div class="tab-page" id="page-directory">
   <div class="panel">
-    <div class="panel-head" style="margin-bottom:14px;flex-wrap:wrap;">
-      <h2 style="font-size:1.05rem;color:var(--brown-800);margin-right:auto;">Vendor Directory</h2>
-      <select id="dProject" onchange="renderDirectory()"><option value="">All projects</option></select>
-      <select id="dType" onchange="renderDirectory()"><option value="">All work types</option></select>
-      <input type="search" id="dSearch" placeholder="Search company, person, email&hellip;"
-        style="padding:8px 12px;border:1px solid var(--sand-200);border-radius:8px;background:#fff;font-size:.87rem;min-width:200px;"
-        oninput="renderDirectory()">
+    <h2 style="font-size:1.05rem;color:var(--brown-800);margin-bottom:14px;">Vendor Directory</h2>
+    <div class="dir-layout">
+      <aside class="dir-side">
+        <select id="dProject" onchange="dirSelected='';renderDirectory()"><option value="">All projects</option></select>
+        <select id="dType" onchange="dirSelected='';renderDirectory()"><option value="">All work types</option></select>
+        <input type="search" id="dSearch" placeholder="Search company, person&hellip;" oninput="renderDirectory()">
+        <div class="dir-co-list" id="dirCompanyList"></div>
+      </aside>
+      <div>
+        <div id="directoryBody" class="dir-grid"></div>
+        <div class="count-line" id="dirCount"></div>
+      </div>
     </div>
-    <div id="directoryBody" class="dir-grid"></div>
-    <div class="count-line" id="dirCount"></div>
   </div>
 </div>
 
@@ -698,6 +712,8 @@ let allPhotos = [];
 let accessList = [];
 let allVendors = [];
 let allActivities = [];
+let dirSelected = "";
+let dirCompanies = [];
 let lookups = { projects: [], parties: [], requestors: [] };
 
 function switchTab(name){
@@ -1463,6 +1479,7 @@ function fillDirectoryFilters(){
 
 function renderDirectory(){
   const box = document.getElementById("directoryBody");
+  const listBox = document.getElementById("dirCompanyList");
   const proj = document.getElementById("dProject").value;
   const type = document.getElementById("dType").value;
   const q = document.getElementById("dSearch").value.trim().toLowerCase();
@@ -1471,7 +1488,25 @@ function renderDirectory(){
     (!type || v.workType === type) &&
     (!q || (v.company + " " + v.person + " " + v.email + " " + v.workType).toLowerCase().includes(q))
   );
-  if(rows.length === 0){
+
+  /* left: company index (unique companies within current filters) */
+  const coMap = {};
+  rows.forEach(v => { if(!coMap[v.company]) coMap[v.company] = v.workType; });
+  const companies = Object.keys(coMap).sort();
+  if(dirSelected && !coMap[dirSelected]) dirSelected = "";
+  listBox.innerHTML =
+    '<div class="dir-co-item' + (dirSelected === "" ? ' active' : '') + '" onclick="dirSelected=\'\';renderDirectory()">' +
+      '<span class="n">All companies</span><span class="t">' + companies.length + '</span></div>' +
+    companies.map((c,i) =>
+      '<div class="dir-co-item' + (dirSelected === c ? ' active' : '') + '" onclick="selectDirCompany(' + i + ')">' +
+        '<span class="n" title="' + esc(c) + '">' + esc(c) + '</span>' +
+        (coMap[c] ? '<span class="t">' + esc(coMap[c]) + '</span>' : '') + '</div>'
+    ).join("");
+  dirCompanies = companies;
+
+  /* right: cards for selected company (or all) */
+  const shown = dirSelected ? rows.filter(v => v.company === dirSelected) : rows;
+  if(shown.length === 0){
     box.innerHTML = '<div class="empty-tab" style="grid-column:1 / -1;">' +
       (allVendors.length === 0
         ? "No vendors in the directory yet. Add them in the CORR_Vendors list in SharePoint."
@@ -1479,9 +1514,8 @@ function renderDirectory(){
     document.getElementById("dirCount").textContent = "";
     return;
   }
-  /* group contacts by company + project + work type */
   const groups = {};
-  rows.forEach(v => {
+  shown.forEach(v => {
     const key = v.company + "||" + v.project + "||" + v.workType;
     (groups[key] = groups[key] || []).push(v);
   });
@@ -1493,7 +1527,7 @@ function renderDirectory(){
       ? '<div class="dir-empty-contact">No contact person recorded yet.</div>'
       : contacts.map(v =>
           '<div class="dir-person">' +
-            '<div class="dir-name">' + esc(v.person || "—") + '</div>' +
+            '<div class="dir-name">' + esc(v.person || "\u2014") + '</div>' +
             '<div class="dir-links">' +
               (v.email ? '<a href="mailto:' + esc(v.email) + '">&#9993; ' + esc(v.email) + '</a>' : '') +
               (v.mobile ? '<a href="tel:' + esc(v.mobile.replace(/[^+\d]/g,"")) + '">&#128241; ' + esc(v.mobile) + '</a>' : '') +
@@ -1506,10 +1540,14 @@ function renderDirectory(){
         (g.project ? '<span class="dir-proj">' + esc(g.project) + '</span>' : '') +
       '</div>' + inner + '</div>';
   }).join("");
-  const companies = new Set(rows.map(v => v.company)).size;
+  const companiesShown = new Set(shown.map(v => v.company)).size;
   document.getElementById("dirCount").textContent =
-    "Showing " + rows.length + " contact" + (rows.length === 1 ? "" : "s") +
-    " across " + companies + " compan" + (companies === 1 ? "y" : "ies");
+    "Showing " + shown.length + " contact" + (shown.length === 1 ? "" : "s") +
+    " across " + companiesShown + " compan" + (companiesShown === 1 ? "y" : "ies");
+}
+function selectDirCompany(i){
+  dirSelected = dirCompanies[i] || "";
+  renderDirectory();
 }
 
 let pickedPhoto = null;  /* {blob, ext} after compression */
