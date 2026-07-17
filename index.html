@@ -295,6 +295,8 @@
   .bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--terra-500),var(--terra-600));}
   .bar-fill.full{background:linear-gradient(90deg,#5B9C6E,var(--green));}
   .bar-row .bv{width:44px;font-weight:700;color:var(--brown-800);flex-shrink:0;}
+  .act-card{grid-column:span 2;}
+  @media (max-width:700px){.act-card{grid-column:1 / -1;}}
   .empty-tab{padding:50px 20px;text-align:center;color:var(--muted);font-size:.92rem;}
   /* ---------- Phase 4: Photos ---------- */
   .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
@@ -1359,12 +1361,12 @@ function renderCharts(){
         '<div class="bl" title="' + esc(a.activity) + '">' + esc(a.activity) + '</div>' +
         '<div class="bar-track"><div class="bar-fill' + (done ? ' full' : '') + '" style="width:' + Math.min(a.pct,100) + '%"></div></div>' +
         '<div class="bv">' + Math.round(a.pct) + '%</div>' +
-        (a.status ? '<div style="width:150px;flex-shrink:0;font-size:.76rem;color:' + (done ? 'var(--green)' : 'var(--muted)') + ';font-weight:600;padding-left:8px;">' + esc(a.status) + '</div>' : '') +
+        (a.status ? '<div style="width:118px;flex-shrink:0;font-size:.72rem;line-height:1.25;color:' + (done ? 'var(--green)' : 'var(--muted)') + ';font-weight:600;padding-left:8px;">' + esc(a.status) + '</div>' : '') +
         '</div>';
     });
     const catActs = acts.filter(a => a.category === cat);
     const avg = catActs.reduce((s,a) => s + a.pct, 0) / catActs.length;
-    cards += '<div class="chart-card" style="grid-column:1 / -1;">' +
+    cards += '<div class="chart-card act-card">' +
       '<h3>' + esc(cat) + '</h3>' +
       '<div class="csub">' + catActs.length + ' activities · average ' + Math.round(avg) + '% complete</div>' + rows + '</div>';
   });
