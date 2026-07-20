@@ -509,25 +509,27 @@
 
 <div class="tab-page" id="page-drawings">
   <div class="panel">
-    <div class="panel-head" style="margin-bottom:14px;flex-wrap:wrap;">
-      <h2 style="font-size:1.05rem;color:var(--brown-800);margin-right:auto;">Drawing Register</h2>
-      <select id="dwProject" onchange="renderDrawingFiles()"><option value="">All projects</option></select>
-      <select id="dwDiscipline" onchange="renderDrawingFiles()"><option value="">All disciplines</option></select>
-      <select id="dwStatus" onchange="renderDrawingFiles()"><option value="">All statuses</option></select>
-      <input type="search" id="dwSearch" placeholder="Search drawing no, title&hellip;"
-        style="padding:8px 12px;border:1px solid var(--sand-200);border-radius:8px;background:#fff;font-size:.87rem;min-width:190px;"
-        oninput="renderDrawingFiles()">
+    <h2 style="font-size:1.05rem;color:var(--brown-800);margin-bottom:14px;">Drawing Register</h2>
+    <div class="dir-layout">
+      <aside class="dir-side">
+        <select id="dwProject" onchange="dwSelected='';renderDrawingFiles()"><option value="">All projects</option></select>
+        <select id="dwStatus" onchange="renderDrawingFiles()"><option value="">All statuses</option></select>
+        <input type="search" id="dwSearch" placeholder="Search drawing no, title&hellip;" oninput="renderDrawingFiles()">
+        <div class="dir-co-list" id="dwDisciplineList"></div>
+      </aside>
+      <div>
+        <div style="overflow-x:auto;">
+          <table id="dwTable" style="min-width:760px;">
+            <thead><tr>
+              <th>Drawing No.</th><th>Title</th><th>Project</th>
+              <th>Rev</th><th>Rev Date</th><th>Status</th><th>File</th>
+            </tr></thead>
+            <tbody id="dwBody"></tbody>
+          </table>
+        </div>
+        <div class="count-line" id="dwCount"></div>
+      </div>
     </div>
-    <div style="overflow-x:auto;">
-      <table id="dwTable" style="min-width:900px;">
-        <thead><tr>
-          <th>Drawing No.</th><th>Title</th><th>Project</th><th>Discipline</th>
-          <th>Rev</th><th>Rev Date</th><th>Status</th><th>File</th>
-        </tr></thead>
-        <tbody id="dwBody"></tbody>
-      </table>
-    </div>
-    <div class="count-line" id="dwCount"></div>
   </div>
 </div>
 
@@ -739,6 +741,8 @@ let allVendors = [];
 let allActivities = [];
 let allDrawingFiles = [];
 let dirSelected = "";
+let dwSelected = "";
+let dwDisciplines = [];
 let dirCompanies = [];
 let lookups = { projects: [], parties: [], requestors: [] };
 
@@ -1529,13 +1533,6 @@ function fillDrawingFilters(){
     pSel.appendChild(o);
   });
   pSel.value = pCur;
-  const dSel = document.getElementById("dwDiscipline");
-  const dCur = dSel.value;
-  while(dSel.options.length > 1) dSel.remove(1);
-  [...new Set(allDrawingFiles.map(d => d.discipline).filter(Boolean))].sort().forEach(t => {
-    const o = document.createElement("option"); o.value = t; o.textContent = t; dSel.appendChild(o);
-  });
-  dSel.value = dCur;
   const sSel = document.getElementById("dwStatus");
   const sCur = sSel.value;
   while(sSel.options.length > 1) sSel.remove(1);
@@ -1553,32 +1550,50 @@ function dwStatusBadge(s){
 
 function renderDrawingFiles(){
   const body = document.getElementById("dwBody");
+  const listBox = document.getElementById("dwDisciplineList");
   const proj = document.getElementById("dwProject").value;
-  const disc = document.getElementById("dwDiscipline").value;
   const stat = document.getElementById("dwStatus").value;
   const q = document.getElementById("dwSearch").value.trim().toLowerCase();
   const rows = allDrawingFiles.filter(d =>
     (!proj || d.project === proj) &&
-    (!disc || d.discipline === disc) &&
     (!stat || d.status === stat) &&
     (!q || (d.drawingNo + " " + d.title + " " + d.name).toLowerCase().includes(q))
   );
-  if(rows.length === 0){
-    body.innerHTML = '<tr><td colspan="8" class="empty-tab">' +
+
+  /* left: discipline index within current filters */
+  const counts = {};
+  rows.forEach(d => {
+    const key = d.discipline || "Unassigned";
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  const disciplines = Object.keys(counts).sort();
+  if(dwSelected && !counts[dwSelected]) dwSelected = "";
+  listBox.innerHTML =
+    '<div class="dir-co-item' + (dwSelected === "" ? ' active' : '') + '" onclick="dwSelected=\'\';renderDrawingFiles()">' +
+      '<span class="n">All disciplines</span><span class="t">' + rows.length + '</span></div>' +
+    disciplines.map((c,i) =>
+      '<div class="dir-co-item' + (dwSelected === c ? ' active' : '') + '" onclick="selectDwDiscipline(' + i + ')">' +
+        '<span class="n" title="' + esc(c) + '">' + esc(c) + '</span>' +
+        '<span class="t">' + counts[c] + '</span></div>'
+    ).join("");
+  dwDisciplines = disciplines;
+
+  const shown = dwSelected ? rows.filter(d => (d.discipline || "Unassigned") === dwSelected) : rows;
+  if(shown.length === 0){
+    body.innerHTML = '<tr><td colspan="7" class="empty-tab">' +
       (allDrawingFiles.length === 0
         ? "No drawings uploaded yet. Add files to the CORR_DrawingFiles library in SharePoint."
         : "No drawings match the current filters.") + '</td></tr>';
     document.getElementById("dwCount").textContent = "";
     return;
   }
-  body.innerHTML = rows.map(d => {
+  body.innerHTML = shown.map(d => {
     const sup = d.status === "Superseded";
     const isPdf = /\.pdf$/i.test(d.name);
     return '<tr' + (sup ? ' style="opacity:.55;"' : '') + '>' +
       '<td style="font-weight:600;white-space:nowrap;">' + esc(d.drawingNo || "\u2014") + '</td>' +
       '<td class="subj">' + esc(d.title) + '</td>' +
       '<td>' + esc(d.project || "\u2014") + '</td>' +
-      '<td>' + esc(d.discipline || "\u2014") + '</td>' +
       '<td style="white-space:nowrap;">' + esc(d.revision || "\u2014") + '</td>' +
       '<td style="white-space:nowrap;">' + fmtDate(d.revDate) + '</td>' +
       '<td>' + dwStatusBadge(d.status) + '</td>' +
@@ -1587,7 +1602,11 @@ function renderDrawingFiles(){
       '</tr>';
   }).join("");
   document.getElementById("dwCount").textContent =
-    "Showing " + rows.length + " of " + allDrawingFiles.length + " drawing" + (allDrawingFiles.length === 1 ? "" : "s");
+    "Showing " + shown.length + " of " + allDrawingFiles.length + " drawing" + (allDrawingFiles.length === 1 ? "" : "s");
+}
+function selectDwDiscipline(i){
+  dwSelected = dwDisciplines[i] || "";
+  renderDrawingFiles();
 }
 
 function vendorInProject(v, proj){
