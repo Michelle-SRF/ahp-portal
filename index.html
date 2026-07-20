@@ -407,6 +407,7 @@
   <button class="tab active" data-tab="tracker" onclick="switchTab('tracker')">Tracker</button>
   <button class="tab" data-tab="gantt" onclick="switchTab('gantt')">Gantt</button>
   <button class="tab" data-tab="charts" onclick="switchTab('charts')">Charts</button>
+  <button class="tab" data-tab="drawings" onclick="switchTab('drawings')">Drawings</button>
   <button class="tab" data-tab="photos" onclick="switchTab('photos')">Photos</button>
   <button class="tab" data-tab="directory" onclick="switchTab('directory')">Directory</button>
 </nav>
@@ -503,6 +504,30 @@
       <select id="cProject" onchange="renderCharts()"></select>
     </div>
     <div class="chart-grid" id="chartsBody"></div>
+  </div>
+</div>
+
+<div class="tab-page" id="page-drawings">
+  <div class="panel">
+    <div class="panel-head" style="margin-bottom:14px;flex-wrap:wrap;">
+      <h2 style="font-size:1.05rem;color:var(--brown-800);margin-right:auto;">Drawing Register</h2>
+      <select id="dwProject" onchange="renderDrawingFiles()"><option value="">All projects</option></select>
+      <select id="dwDiscipline" onchange="renderDrawingFiles()"><option value="">All disciplines</option></select>
+      <select id="dwStatus" onchange="renderDrawingFiles()"><option value="">All statuses</option></select>
+      <input type="search" id="dwSearch" placeholder="Search drawing no, title&hellip;"
+        style="padding:8px 12px;border:1px solid var(--sand-200);border-radius:8px;background:#fff;font-size:.87rem;min-width:190px;"
+        oninput="renderDrawingFiles()">
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="dwTable" style="min-width:900px;">
+        <thead><tr>
+          <th>Drawing No.</th><th>Title</th><th>Project</th><th>Discipline</th>
+          <th>Rev</th><th>Rev Date</th><th>Status</th><th>File</th>
+        </tr></thead>
+        <tbody id="dwBody"></tbody>
+      </table>
+    </div>
+    <div class="count-line" id="dwCount"></div>
   </div>
 </div>
 
@@ -712,6 +737,7 @@ let allPhotos = [];
 let accessList = [];
 let allVendors = [];
 let allActivities = [];
+let allDrawingFiles = [];
 let dirSelected = "";
 let dirCompanies = [];
 let lookups = { projects: [], parties: [], requestors: [] };
@@ -723,6 +749,7 @@ function switchTab(name){
   if(name === "gantt") renderGantt();
   if(name === "charts") renderCharts();
   if(name === "photos") renderPhotos();
+  if(name === "drawings") renderDrawingFiles();
   if(name === "directory") renderDirectory();
 }
 
@@ -1102,6 +1129,18 @@ async function loadData(){
       pct: Number(a.Percentage) || 0,
       status: cv(a.ActivityStatus)
     }));
+    /* Drawing Register from CORR_DrawingFiles library */
+    allDrawingFiles = (data.drawingFiles || []).filter(f => !f["{IsFolder}"]).map(f => ({
+      name: f["{FilenameWithExtension}"] || f["{Name}"] || "",
+      title: cv(f.Title) || f["{Name}"] || "",
+      project: cv(f.ProjectCode),
+      discipline: cv(f.Discipline),
+      drawingNo: cv(f.DrawingNo),
+      revision: cv(f.Revision),
+      revDate: f.RevisionDate || "",
+      status: cv(f.DrawingStatus),
+      link: f["{Link}"] || ""
+    })).sort((a,b) => new Date(b.revDate || 0) - new Date(a.revDate || 0));
     /* ViewScope "Own": engineers see only their assigned project's data across every tab */
     if(userRole === "engineer" && engineer && engineer.scope !== "All"){
       const mine = engineer.project;
@@ -1110,13 +1149,16 @@ async function loadData(){
       allProgress = allProgress.filter(p => p.project === mine);
       allDrawings = allDrawings.filter(d => d.project === mine);
       allPhotos   = allPhotos.filter(p => p.project === mine);
-      allVendors  = allVendors.filter(v => v.project === mine);
+      allVendors  = allVendors.filter(v => vendorInProject(v, mine));
       allActivities = allActivities.filter(a => a.project === mine);
+      allDrawingFiles = allDrawingFiles.filter(d => !d.project || d.project === mine);
       lookups.projects = lookups.projects.filter(p => p.code === mine);
     }
     fillProjectSelectors();
     fillPhotoProjectFilter();
     fillDirectoryFilters();
+    fillDrawingFilters();
+    renderDrawingFiles();
     renderPhotos();
     renderDirectory();
 
@@ -1477,6 +1519,81 @@ function fillDirectoryFilters(){
   tSel.value = tCur;
 }
 
+function fillDrawingFilters(){
+  const pSel = document.getElementById("dwProject");
+  const pCur = pSel.value;
+  while(pSel.options.length > 1) pSel.remove(1);
+  lookups.projects.forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.code; o.textContent = p.code + " \u2014 " + p.name;
+    pSel.appendChild(o);
+  });
+  pSel.value = pCur;
+  const dSel = document.getElementById("dwDiscipline");
+  const dCur = dSel.value;
+  while(dSel.options.length > 1) dSel.remove(1);
+  [...new Set(allDrawingFiles.map(d => d.discipline).filter(Boolean))].sort().forEach(t => {
+    const o = document.createElement("option"); o.value = t; o.textContent = t; dSel.appendChild(o);
+  });
+  dSel.value = dCur;
+  const sSel = document.getElementById("dwStatus");
+  const sCur = sSel.value;
+  while(sSel.options.length > 1) sSel.remove(1);
+  [...new Set(allDrawingFiles.map(d => d.status).filter(Boolean))].sort().forEach(t => {
+    const o = document.createElement("option"); o.value = t; o.textContent = t; sSel.appendChild(o);
+  });
+  sSel.value = sCur;
+}
+
+function dwStatusBadge(s){
+  if(!s) return "";
+  const map = {"Approved":"b-replied","For Construction":"b-in","For Approval":"b-pending","Issued for Tender":"b-pending","Superseded":"b-closed"};
+  return '<span class="badge ' + (map[s] || "b-closed") + '">' + esc(s) + '</span>';
+}
+
+function renderDrawingFiles(){
+  const body = document.getElementById("dwBody");
+  const proj = document.getElementById("dwProject").value;
+  const disc = document.getElementById("dwDiscipline").value;
+  const stat = document.getElementById("dwStatus").value;
+  const q = document.getElementById("dwSearch").value.trim().toLowerCase();
+  const rows = allDrawingFiles.filter(d =>
+    (!proj || d.project === proj) &&
+    (!disc || d.discipline === disc) &&
+    (!stat || d.status === stat) &&
+    (!q || (d.drawingNo + " " + d.title + " " + d.name).toLowerCase().includes(q))
+  );
+  if(rows.length === 0){
+    body.innerHTML = '<tr><td colspan="8" class="empty-tab">' +
+      (allDrawingFiles.length === 0
+        ? "No drawings uploaded yet. Add files to the CORR_DrawingFiles library in SharePoint."
+        : "No drawings match the current filters.") + '</td></tr>';
+    document.getElementById("dwCount").textContent = "";
+    return;
+  }
+  body.innerHTML = rows.map(d => {
+    const sup = d.status === "Superseded";
+    const isPdf = /\.pdf$/i.test(d.name);
+    return '<tr' + (sup ? ' style="opacity:.55;"' : '') + '>' +
+      '<td style="font-weight:600;white-space:nowrap;">' + esc(d.drawingNo || "\u2014") + '</td>' +
+      '<td class="subj">' + esc(d.title) + '</td>' +
+      '<td>' + esc(d.project || "\u2014") + '</td>' +
+      '<td>' + esc(d.discipline || "\u2014") + '</td>' +
+      '<td style="white-space:nowrap;">' + esc(d.revision || "\u2014") + '</td>' +
+      '<td style="white-space:nowrap;">' + fmtDate(d.revDate) + '</td>' +
+      '<td>' + dwStatusBadge(d.status) + '</td>' +
+      '<td><a class="pdf-link" href="' + esc(d.link) + '" target="_blank" rel="noopener">' +
+        (isPdf ? "&#128196; View" : "&#128190; Download") + '</a></td>' +
+      '</tr>';
+  }).join("");
+  document.getElementById("dwCount").textContent =
+    "Showing " + rows.length + " of " + allDrawingFiles.length + " drawing" + (allDrawingFiles.length === 1 ? "" : "s");
+}
+
+function vendorInProject(v, proj){
+  if(!proj) return true;
+  return String(v.project).split(",").map(s => s.trim()).includes(proj);
+}
 function renderDirectory(){
   const box = document.getElementById("directoryBody");
   const listBox = document.getElementById("dirCompanyList");
@@ -1484,7 +1601,7 @@ function renderDirectory(){
   const type = document.getElementById("dType").value;
   const q = document.getElementById("dSearch").value.trim().toLowerCase();
   const rows = allVendors.filter(v =>
-    (!proj || v.project === proj) &&
+    vendorInProject(v, proj) &&
     (!type || v.workType === type) &&
     (!q || (v.company + " " + v.person + " " + v.email + " " + v.workType).toLowerCase().includes(q))
   );
