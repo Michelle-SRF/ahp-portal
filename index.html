@@ -243,18 +243,33 @@
   .form-msg{font-size:.85rem;min-height:20px;margin-top:12px;}
   .form-msg.ok{color:var(--green);}
   .form-msg.err{color:var(--red);}
-  /* ---------- Tabs ---------- */
+  /* ---------- Tabs (folder style, soft AHP hues) ---------- */
   .tabs{
-    max-width:1280px;margin:18px auto 0;padding:0 32px;
-    display:flex;gap:6px;border-bottom:2px solid var(--sand-200);
+    max-width:1280px;margin:20px auto 0;padding:0 32px;
+    display:flex;gap:5px;flex-wrap:wrap;
+    border-bottom:2.5px solid var(--terra-600);
   }
   .tab{
-    background:none;border:none;cursor:pointer;font-size:.92rem;font-weight:600;
-    color:var(--muted);padding:10px 20px 12px;border-bottom:3px solid transparent;
-    margin-bottom:-2px;letter-spacing:.3px;
+    position:relative;cursor:pointer;font-size:.9rem;font-weight:600;letter-spacing:.3px;
+    color:var(--brown-700);padding:11px 22px 12px;
+    border:1px solid var(--sand-200);border-bottom:none;
+    border-radius:12px 12px 0 0;margin-bottom:-2.5px;
+    transition:transform .12s ease, background .12s ease, color .12s ease;
+    top:2px;
   }
-  .tab:hover{color:var(--brown-700);}
-  .tab.active{color:var(--brown-800);border-bottom-color:var(--terra-600);}
+  /* each tab a different soft tint from the AHP palette */
+  .tab:nth-child(7n+1){background:#FBF4EC;}
+  .tab:nth-child(7n+2){background:#F1F6EF;}
+  .tab:nth-child(7n+3){background:#EEF3F7;}
+  .tab:nth-child(7n+4){background:var(--terra-100);}
+  .tab:nth-child(7n+5){background:#F7F2E9;}
+  .tab:nth-child(7n+6){background:#F3EFEA;}
+  .tab:nth-child(7n+7){background:#F0F4F1;}
+  .tab:hover{color:var(--brown-800);top:0;}
+  .tab.active{
+    background:var(--terra-600);color:#fff;border-color:var(--terra-600);
+    top:0;box-shadow:0 -2px 8px rgba(176,101,63,.25);
+  }
   .tab-page{display:none;}
   .tab-page.active{display:block;}
   /* ---------- Gantt ---------- */
