@@ -519,7 +519,6 @@
   <div class="panel">
     <div class="panel-head" style="margin-bottom:14px;">
       <h2 style="font-size:1.05rem;color:var(--brown-800);">Progress Status</h2>
-      <span id="chartsAsOn" style="font-size:.82rem;color:var(--muted);margin-right:auto;align-self:center;"></span>
       <select id="cProject" onchange="renderCharts()"></select>
     </div>
     <div class="chart-grid" id="chartsBody"></div>
@@ -1199,7 +1198,8 @@ async function loadData(){
       category: cv(a.Category),
       project: cv(a.ProjectCode),
       pct: Number(a.Percentage) || 0,
-      status: cv(a.ActivityStatus)
+      status: cv(a.ActivityStatus),
+      asOn: a.AsOnDate || ""
     }));
     /* Drawing Register from CORR_DrawingFiles library */
     allDrawingFiles = (data.drawingFiles || []).filter(f => !f["{IsFolder}"]).map(f => ({
@@ -1462,10 +1462,6 @@ function renderCharts(){
   const proj = document.getElementById("cProject").value;
   const box = document.getElementById("chartsBody");
   const prog = allProgress.filter(p => p.project === proj);
-  const asOnDates = prog.map(p => p.asOf).filter(Boolean).map(d => new Date(d));
-  const asOn = asOnDates.length ? new Date(Math.max(...asOnDates)) : new Date();
-  document.getElementById("chartsAsOn").textContent =
-    "as on " + asOn.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
   const drw  = allDrawings.filter(d => d.project === proj).sort((a,b) => b.pct - a.pct);
   let cards = "";
 
@@ -1503,9 +1499,12 @@ function renderCharts(){
     });
     const catActs = acts.filter(a => a.category === cat);
     const avg = catActs.reduce((s,a) => s + a.pct, 0) / catActs.length;
+    const catDates = catActs.map(a => a.asOn).filter(Boolean).map(d => new Date(d));
+    const catAsOn = catDates.length ? new Date(Math.max(...catDates)) : null;
+    const asOnTxt = catAsOn ? " · as on " + catAsOn.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "";
     cards += '<div class="chart-card act-card">' +
       '<h3>' + esc(cat) + '</h3>' +
-      '<div class="csub">' + catActs.length + ' activities · average ' + Math.round(avg) + '% complete</div>' + rows + '</div>';
+      '<div class="csub">' + catActs.length + ' activities · average ' + Math.round(avg) + '% complete' + asOnTxt + '</div>' + rows + '</div>';
   });
 
   /* consultant drawing status */
