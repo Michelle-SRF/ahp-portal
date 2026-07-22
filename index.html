@@ -381,6 +381,26 @@
   .dir-links a{color:var(--terra-600);text-decoration:none;white-space:nowrap;}
   .dir-links a:hover{text-decoration:underline;}
   .dir-empty-contact{font-size:.8rem;color:var(--muted);font-style:italic;padding:6px 0;}
+  .folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+  .folder-card{
+    background:#fff;border:1px solid var(--sand-200);border-radius:14px;padding:20px 18px;
+    box-shadow:0 1px 4px rgba(62,43,31,.07);cursor:pointer;display:flex;align-items:center;gap:14px;
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .folder-card:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(62,43,31,.13);background:var(--sand-50);}
+  .folder-card .fico{font-size:1.9rem;line-height:1;flex-shrink:0;}
+  .folder-card .fname{font-size:.93rem;font-weight:700;color:var(--brown-800);line-height:1.3;}
+  .folder-card .fcount{font-size:.76rem;color:var(--muted);margin-top:3px;}
+  .folder-card.all-card{background:var(--terra-100);border-color:var(--terra-500);}
+  .dw-crumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .dw-crumb h2{font-size:1.05rem;color:var(--brown-800);}
+  .dw-back{
+    background:none;border:1px solid var(--sand-200);border-radius:8px;cursor:pointer;
+    font-size:.82rem;font-weight:600;color:var(--terra-600);padding:6px 12px;
+  }
+  .dw-back:hover{background:var(--terra-100);}
+  .dw-back.cur{background:var(--terra-600);color:#fff;border-color:var(--terra-600);cursor:default;}
+  .dw-sep{color:var(--muted);font-size:1rem;}
   .dir-layout{display:grid;grid-template-columns:290px 1fr;gap:18px;align-items:start;}
   @media (max-width:820px){.dir-layout{grid-template-columns:1fr;}}
   .dir-side{display:flex;flex-direction:column;gap:10px;position:sticky;top:12px;}
@@ -527,25 +547,34 @@
 
 <div class="tab-page" id="page-drawings">
   <div class="panel">
-    <h2 style="font-size:1.05rem;color:var(--brown-800);margin-bottom:14px;">Drawing Register</h2>
-    <div class="dir-layout">
-      <aside class="dir-side">
-        <select id="dwProject" onchange="dwSelected='';renderDrawingFiles()"><option value="">All projects</option></select>
-        <select id="dwStatus" onchange="renderDrawingFiles()"><option value="">All statuses</option></select>
-        <input type="search" id="dwSearch" placeholder="Search drawing no, title&hellip;" oninput="renderDrawingFiles()">
-        <div class="dir-co-list" id="dwDisciplineList"></div>
-      </aside>
-      <div>
-        <div style="overflow-x:auto;">
-          <table id="dwTable" style="min-width:760px;">
-            <thead><tr>
-              <th>Drawing No.</th><th>Title</th><th>Project</th>
-              <th>Rev</th><th>Rev Date</th><th>Status</th><th>File</th>
-            </tr></thead>
-            <tbody id="dwBody"></tbody>
-          </table>
+    <div id="dwCrumb" style="margin-bottom:16px;"></div>
+
+    <!-- Folders at the current level -->
+    <div id="dwFolderView">
+      <div class="folder-grid" id="dwFolderGrid"></div>
+    </div>
+
+    <!-- Files at the current level -->
+    <div id="dwRegisterView" style="display:none;">
+      <div class="dir-layout">
+        <aside class="dir-side">
+          <select id="dwProject" onchange="dwSelected='';renderDrawingFiles()"><option value="">All projects</option></select>
+          <select id="dwStatus" onchange="renderDrawingFiles()"><option value="">All statuses</option></select>
+          <input type="search" id="dwSearch" placeholder="Search drawing no, title&hellip;" oninput="renderDrawingFiles()">
+          <div class="dir-co-list" id="dwDisciplineList"></div>
+        </aside>
+        <div>
+          <div style="overflow-x:auto;">
+            <table id="dwTable" style="min-width:760px;">
+              <thead><tr>
+                <th>Drawing No.</th><th>Title</th><th>Project</th>
+                <th>Rev</th><th>Rev Date</th><th>Status</th><th>File</th>
+              </tr></thead>
+              <tbody id="dwBody"></tbody>
+            </table>
+          </div>
+          <div class="count-line" id="dwCount"></div>
         </div>
-        <div class="count-line" id="dwCount"></div>
       </div>
     </div>
   </div>
@@ -798,6 +827,8 @@ let allActivities = [];
 let allDrawingFiles = [];
 let dirSelected = "";
 let dwSelected = "";
+let dwPath = [];       /* current folder path, [] = library root */
+let dwAll = false;     /* true = flat "all drawings" register */
 let dwDisciplines = [];
 let dirCompanies = [];
 let lookups = { projects: [], parties: [], requestors: [] };
@@ -1203,6 +1234,7 @@ async function loadData(){
     }));
     /* Drawing Register from CORR_DrawingFiles library */
     allDrawingFiles = (data.drawingFiles || []).filter(f => !f["{IsFolder}"]).map(f => ({
+      folderPath: folderPathFromFile(f),
       name: f["{FilenameWithExtension}"] || f["{Name}"] || "",
       title: cv(f.Title) || f["{Name}"] || "",
       project: cv(f.ProjectCode),
@@ -1591,6 +1623,39 @@ function fillDirectoryFilters(){
   tSel.value = tCur;
 }
 
+function folderPathFromFile(f){
+  /* SharePoint {Path} looks like /sites/AHPProjectPortal/CORR_DrawingFiles/MEP/Drawings/Fire Alarm/
+     Return the folder segments below the library, e.g. ["MEP","Drawings","Fire Alarm"] */
+  const raw = f["{Path}"] || "";
+  const fname = f["{FilenameWithExtension}"] || f["{Name}"] || "";
+  let parts = String(raw).split("/").filter(Boolean);
+  const i = parts.findIndex(p => p.toLowerCase() === "corr_drawingfiles");
+  parts = (i === -1) ? [] : parts.slice(i + 1);
+  if(parts.length && fname && parts[parts.length - 1] === fname) parts.pop();
+  return parts;
+}
+
+function dwOpen(name){
+  dwPath = dwPath.concat([name]);
+  dwSelected = "";
+  const s = document.getElementById("dwSearch"); if(s) s.value = "";
+  renderDrawingFiles();
+}
+function dwGoTo(level){          /* -1 = root */
+  dwAll = false;
+  dwPath = level < 0 ? [] : dwPath.slice(0, level + 1);
+  dwSelected = "";
+  const s = document.getElementById("dwSearch"); if(s) s.value = "";
+  renderDrawingFiles();
+}
+function dwOpenAll(){
+  dwAll = true;
+  dwPath = [];
+  dwSelected = "";
+  const s = document.getElementById("dwSearch"); if(s) s.value = "";
+  renderDrawingFiles();
+}
+
 function fillDrawingFilters(){
   const pSel = document.getElementById("dwProject");
   const pCur = pSel.value;
@@ -1617,50 +1682,120 @@ function dwStatusBadge(s){
 }
 
 function renderDrawingFiles(){
-  const body = document.getElementById("dwBody");
-  const listBox = document.getElementById("dwDisciplineList");
+  const crumb = document.getElementById("dwCrumb");
+  const folderView = document.getElementById("dwFolderView");
+  const registerView = document.getElementById("dwRegisterView");
+  const grid = document.getElementById("dwFolderGrid");
+
+  if(allDrawingFiles.length === 0){
+    crumb.innerHTML = '<div class="dw-crumb"><h2>Drawing Register</h2></div>';
+    folderView.style.display = "";
+    registerView.style.display = "none";
+    grid.innerHTML = '<div class="empty-tab" style="grid-column:1 / -1;">No drawings uploaded yet. Add files to the CORR_DrawingFiles library in SharePoint.</div>';
+    return;
+  }
+
+  /* ---------- breadcrumb ---------- */
+  let cr = '<div class="dw-crumb">';
+  cr += '<button class="dw-back' + (dwPath.length === 0 && !dwAll ? ' cur' : '') + '" onclick="dwGoTo(-1)">&#128193; Drawings</button>';
+  dwPath.forEach((seg, i) => {
+    cr += '<span class="dw-sep">&#8250;</span>';
+    cr += '<button class="dw-back' + (i === dwPath.length - 1 ? ' cur' : '') + '" onclick="dwGoTo(' + i + ')">' + esc(seg) + '</button>';
+  });
+  if(dwAll){ cr += '<span class="dw-sep">&#8250;</span><button class="dw-back cur">All drawings</button>'; }
+  cr += '</div>';
+  crumb.innerHTML = cr;
+
+  const q = (document.getElementById("dwSearch").value || "").trim().toLowerCase();
+  const here = dwPath.join("/");
+  const under = d => {
+    const p = (d.folderPath || []).join("/");
+    return here === "" ? true : (p === here || p.indexOf(here + "/") === 0);
+  };
+
+  /* ---------- sub-folders at this level (hidden while searching or in All mode) ---------- */
+  let folders = [];
+  if(!dwAll && !q){
+    const counts = {};
+    allDrawingFiles.forEach(d => {
+      const p = d.folderPath || [];
+      if(p.length > dwPath.length && under(d)){
+        const nextName = p[dwPath.length];
+        counts[nextName] = (counts[nextName] || 0) + 1;
+      }
+    });
+    folders = Object.keys(counts).sort();
+    grid.innerHTML = folders.map(f =>
+      '<div class="folder-card" onclick="dwOpen(' + JSON.stringify(f).replace(/"/g,"&quot;") + ')">' +
+        '<div class="fico">&#128193;</div>' +
+        '<div><div class="fname">' + esc(f) + '</div>' +
+        '<div class="fcount">' + counts[f] + ' file' + (counts[f] === 1 ? '' : 's') + '</div></div>' +
+      '</div>').join("") +
+      (dwPath.length === 0 ?
+        '<div class="folder-card all-card" onclick="dwOpenAll()">' +
+          '<div class="fico">&#128209;</div>' +
+          '<div><div class="fname">All drawings</div>' +
+          '<div class="fcount">' + allDrawingFiles.length + ' file' + (allDrawingFiles.length === 1 ? '' : 's') + ' \u00b7 full register</div></div>' +
+        '</div>' : "");
+    folderView.style.display = folders.length || dwPath.length === 0 ? "" : "none";
+  } else {
+    folderView.style.display = "none";
+  }
+
+  /* ---------- files to list ----------
+     - All mode: everything
+     - searching: everything under the current folder (recursive)
+     - normal: only files sitting directly in this folder            */
+  let pool;
+  if(dwAll) pool = allDrawingFiles.slice();
+  else if(q) pool = allDrawingFiles.filter(under);
+  else pool = allDrawingFiles.filter(d => (d.folderPath || []).join("/") === here);
+
   const proj = document.getElementById("dwProject").value;
   const stat = document.getElementById("dwStatus").value;
-  const q = document.getElementById("dwSearch").value.trim().toLowerCase();
-  const rows = allDrawingFiles.filter(d =>
+  const rows = pool.filter(d =>
     (!proj || d.project === proj) &&
     (!stat || d.status === stat) &&
     (!q || (d.drawingNo + " " + d.title + " " + d.name).toLowerCase().includes(q))
   );
 
-  /* left: discipline index within current filters */
+  if(pool.length === 0 && !q){
+    registerView.style.display = "none";
+    return;
+  }
+  registerView.style.display = "";
+
+  /* discipline index */
   const counts = {};
-  rows.forEach(d => {
-    const key = d.discipline || "Unassigned";
-    counts[key] = (counts[key] || 0) + 1;
-  });
+  rows.forEach(d => { const k = d.discipline || "Unassigned"; counts[k] = (counts[k] || 0) + 1; });
   const disciplines = Object.keys(counts).sort();
   if(dwSelected && !counts[dwSelected]) dwSelected = "";
-  listBox.innerHTML =
+  document.getElementById("dwDisciplineList").innerHTML =
     '<div class="dir-co-item' + (dwSelected === "" ? ' active' : '') + '" onclick="dwSelected=\'\';renderDrawingFiles()">' +
       '<span class="n">All disciplines</span><span class="t">' + rows.length + '</span></div>' +
     disciplines.map((c,i) =>
       '<div class="dir-co-item' + (dwSelected === c ? ' active' : '') + '" onclick="selectDwDiscipline(' + i + ')">' +
         '<span class="n" title="' + esc(c) + '">' + esc(c) + '</span>' +
-        '<span class="t">' + counts[c] + '</span></div>'
-    ).join("");
+        '<span class="t">' + counts[c] + '</span></div>').join("");
   dwDisciplines = disciplines;
 
   const shown = dwSelected ? rows.filter(d => (d.discipline || "Unassigned") === dwSelected) : rows;
+  const body = document.getElementById("dwBody");
   if(shown.length === 0){
-    body.innerHTML = '<tr><td colspan="7" class="empty-tab">' +
-      (allDrawingFiles.length === 0
-        ? "No drawings uploaded yet. Add files to the CORR_DrawingFiles library in SharePoint."
-        : "No drawings match the current filters.") + '</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="empty-tab">No drawings match the current filters.</td></tr>';
     document.getElementById("dwCount").textContent = "";
     return;
   }
+  const showFolderCol = dwAll || !!q;
   body.innerHTML = shown.map(d => {
     const sup = d.status === "Superseded";
     const isPdf = /\.pdf$/i.test(d.name);
+    const loc = (d.folderPath || []).join(" \u203a ");
     return '<tr' + (sup ? ' style="opacity:.55;"' : '') + '>' +
       '<td style="font-weight:600;white-space:nowrap;">' + esc(d.drawingNo || "\u2014") + '</td>' +
-      '<td class="subj">' + esc(d.title) + '</td>' +
+      '<td class="subj">' + esc(d.title) +
+        (showFolderCol && loc ? '<div style="font-size:.72rem;color:var(--muted);margin-top:2px;">&#128193; ' + esc(loc) + '</div>' : '') +
+      '</td>' +
       '<td>' + esc(d.project || "\u2014") + '</td>' +
       '<td style="white-space:nowrap;">' + esc(d.revision || "\u2014") + '</td>' +
       '<td style="white-space:nowrap;">' + fmtDate(d.revDate) + '</td>' +
@@ -1670,8 +1805,10 @@ function renderDrawingFiles(){
       '</tr>';
   }).join("");
   document.getElementById("dwCount").textContent =
-    "Showing " + shown.length + " of " + allDrawingFiles.length + " drawing" + (allDrawingFiles.length === 1 ? "" : "s");
+    "Showing " + shown.length + " of " + pool.length + " file" + (pool.length === 1 ? "" : "s") +
+    (q ? " matching your search" : "");
 }
+
 function selectDwDiscipline(i){
   dwSelected = dwDisciplines[i] || "";
   renderDrawingFiles();
